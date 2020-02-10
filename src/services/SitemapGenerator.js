@@ -38,9 +38,9 @@ class SitemapGenerator extends BasicService {
     async _generateBulk() {
         // eslint-disable-next-line no-constant-condition
         while (true) {
-            const partsUpdated = await this._generate();
+            const sitemapsUpdated = await this._generate();
 
-            if (partsUpdated < CHUNK_SIZE) {
+            if (sitemapsUpdated < CHUNK_SIZE) {
                 break;
             }
         }
@@ -52,13 +52,13 @@ class SitemapGenerator extends BasicService {
     async _generate() {
         const generateStartTime = new Date();
 
-        const partsObjects = await SitemapModel.find(
+        const sitemapsObjects = await SitemapModel.find(
             { needRegenerate: true },
             { _id: false, part: true },
             { lean: true, limit: CHUNK_SIZE, sort: { part: -1 } }
         );
 
-        const parts = partsObjects.map(({ part }) => part);
+        const parts = sitemapsObjects.map(({ part }) => part);
 
         for (const part of parts) {
             try {
@@ -91,7 +91,7 @@ class SitemapGenerator extends BasicService {
             }
         );
 
-        return partsObjects.length;
+        return sitemapsObjects.length;
     }
 
     async _generateForPart(part) {

@@ -6,10 +6,10 @@ const env = require('../data/env');
 const { wait } = require('../utils/common');
 
 const PrismMongo = require('../controllers/PrismMongo');
+const DataModel = require('../models/Data');
 const PostModel = require('../models/Post');
 const SitemapModel = require('../models/Sitemap');
 
-const SITEMAP_SIZE = 10000;
 const POSTS_COUNT = 1000;
 
 class Filler extends BasicService {
@@ -26,43 +26,74 @@ class Filler extends BasicService {
     }
 
     async _proccess() {
-        let lastTime = null;
+        let data = await this._getData();
+
+        if (!data) {
+            data = await DataModel.create({});
+        }
+
+        let lastTime = data.lastPostTime;
 
         while (true) {
-            const posts = await this._prismMongo.getPosts({ date: lastTime, limit: POSTS_COUNT });
+            try {
+                const posts = await this._prismMongo.getPosts({
+                    date: lastTime,
+                    limit: POSTS_COUNT,
+                });
 
-            if (!posts || !posts.length || posts.length < POSTS_COUNT) {
-                break;
+                if (!posts || !posts.length || posts.length < POSTS_COUNT) {
+                    break;
+                }
+
+                const lastPost = last(posts);
+                lastTime = lastPost.updateTime || lastPost.creationTime;
+
+                const sitemap = await this._getOrCreateLastSitemap();
+
+                const { upsertedCount, modifiedCount } = await this._createPosts(
+                    sitemap.part,
+                    posts
+                );
+
+                const needRegenerate = upsertedCount > 0 || modifiedCount > 0;
+
+                if (needRegenerate) {
+                    const update = {
+                        $inc: { count: upsertedCount },
+                        $set: {
+                            updateTime: lastTime,
+                            needRegenerate,
+                            needRegenerateAt: new Date(),
+                        },
+                    };
+
+                    await sitemap.updateOne(update);
+                }
+
+                await this._updateData({ lastPostTime: lastTime });
+            } catch (err) {
+                Logger.error('Filler tick failed:', err);
             }
 
-            const lastPost = last(posts);
-            lastTime = lastPost.updateTime || lastPost.creationTime;
-
-            const sitemap = await this._getOrCreateLastSitemap();
-
-            const { upsertedCount, modifiedCount } = await this._createPosts(sitemap.part, posts);
-
-            const needRegenerate = upsertedCount > 0 || modifiedCount > 0;
-
-            if (needRegenerate) {
-                const update = {
-                    $inc: { count: upsertedCount },
-                    $set: {
-                        updateTime: lastTime,
-                        needRegenerate,
-                        needRegenerateAt: new Date(),
-                    },
-                };
-
-                await sitemap.updateOne(update);
-            }
-
-            await wait(1000);
+            await wait(env.GLS_FILL_EVERY);
         }
     }
 
+    async _getData() {
+        return await DataModel.findOne({}, {}, { lean: true });
+    }
+
+    async _updateData(updates) {
+        return await DataModel.updateOne(
+            {},
+            {
+                $set: updates,
+            }
+        );
+    }
+
     async _getOrCreateLastSitemap() {
-        let sitemap = await SitemapModel.findOne({ count: { $lt: SITEMAP_SIZE } }).sort({
+        let sitemap = await SitemapModel.findOne({ count: { $lt: env.GLS_SITEMAP_SIZE } }).sort({
             part: -1,
         });
 
