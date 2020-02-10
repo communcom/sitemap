@@ -11,6 +11,7 @@ const PostModel = require('../models/Post');
 const SitemapModel = require('../models/Sitemap');
 
 const POSTS_COUNT = 1000;
+const POSTS_REQUEST_INTERVAL = 30000;
 
 class Filler extends BasicService {
     constructor() {
@@ -26,6 +27,18 @@ class Filler extends BasicService {
     }
 
     async _proccess() {
+        while (true) {
+            try {
+                this._generate();
+            } catch (err) {
+                Logger.error('Filler tick failed:', err);
+            }
+
+            await wait(env.GLS_FILL_EVERY);
+        }
+    }
+
+    async _generate() {
         let data = await this._getData();
 
         if (!data) {
@@ -35,47 +48,40 @@ class Filler extends BasicService {
         let lastTime = data.lastPostTime;
 
         while (true) {
-            try {
-                const posts = await this._prismMongo.getPosts({
-                    date: lastTime,
-                    limit: POSTS_COUNT,
-                });
+            const posts = await this._prismMongo.getPosts({
+                date: lastTime,
+                limit: POSTS_COUNT,
+            });
 
-                if (!posts || !posts.length || posts.length < POSTS_COUNT) {
-                    break;
-                }
-
-                const lastPost = last(posts);
-                lastTime = lastPost.updateTime || lastPost.creationTime;
-
-                const sitemap = await this._getOrCreateLastSitemap();
-
-                const { upsertedCount, modifiedCount } = await this._createPosts(
-                    sitemap.part,
-                    posts
-                );
-
-                const needRegenerate = upsertedCount > 0 || modifiedCount > 0;
-
-                if (needRegenerate) {
-                    const update = {
-                        $inc: { count: upsertedCount },
-                        $set: {
-                            updateTime: lastTime,
-                            needRegenerate,
-                            needRegenerateAt: new Date(),
-                        },
-                    };
-
-                    await sitemap.updateOne(update);
-                }
-
-                await this._updateData({ lastPostTime: lastTime });
-            } catch (err) {
-                Logger.error('Filler tick failed:', err);
+            if (!posts || !posts.length || posts.length < POSTS_COUNT) {
+                break;
             }
 
-            await wait(env.GLS_FILL_EVERY);
+            const lastPost = last(posts);
+            lastTime = lastPost.updateTime || lastPost.creationTime;
+
+            const sitemap = await this._getOrCreateLastSitemap();
+
+            const { upsertedCount, modifiedCount } = await this._createPosts(sitemap.part, posts);
+
+            const needRegenerate = upsertedCount > 0 || modifiedCount > 0;
+
+            if (needRegenerate) {
+                const update = {
+                    $inc: { count: upsertedCount },
+                    $set: {
+                        updateTime: lastTime,
+                        needRegenerate,
+                        needRegenerateAt: new Date(),
+                    },
+                };
+
+                await sitemap.updateOne(update);
+            }
+
+            await this._updateData({ lastPostTime: lastTime });
+
+            await wait(POSTS_REQUEST_INTERVAL);
         }
     }
 
