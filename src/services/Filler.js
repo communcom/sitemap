@@ -30,7 +30,7 @@ class Filler extends BasicService {
     async _proccess() {
         while (true) {
             try {
-                this._generate();
+                await this._generate();
             } catch (err) {
                 Logger.error('Filler tick failed:', err);
             }
