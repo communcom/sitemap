@@ -60,7 +60,7 @@ class Filler extends BasicService {
             }
 
             const lastPost = last(posts);
-            lastTime = lastPost.updateTime || lastPost.creationTime;
+            lastTime = new Date(lastPost.updateTime || lastPost.creationTime);
 
             const sitemap = await this._getOrCreateLastSitemap();
 
