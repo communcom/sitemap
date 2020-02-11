@@ -55,6 +55,16 @@ module.exports = MongoDB.makeModel(
                     unique: true,
                 },
             },
+            {
+                fields: {
+                    sitemap: 1,
+                },
+            },
+            {
+                fields: {
+                    sitemap: 1,
+                },
+            },
         ],
     }
 );
