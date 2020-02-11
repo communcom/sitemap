@@ -50,11 +50,13 @@ module.exports = MongoDB.makeModel(
             {
                 fields: {
                     needRegenerate: 1,
+                    count: 1,
                     part: -1,
                 },
             },
             {
                 fields: {
+                    count: 1,
                     updateTime: -1,
                 },
             },

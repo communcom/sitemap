@@ -119,7 +119,7 @@ class SitemapGenerator extends BasicService {
     async _writeIndexSitemap() {
         return new Promise((resolve, reject) => {
             const cursor = SitemapModel.find(
-                {},
+                { count: { $ne: 0 } },
                 { _id: false, part: true, updateTime: true },
                 { lean: true, sort: { updateTime: -1 } }
             ).cursor();
