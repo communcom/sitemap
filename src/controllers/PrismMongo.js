@@ -1,7 +1,7 @@
-const { MongoClient } = require('mongodb');
 const core = require('cyberway-core-service');
 const BasicController = core.controllers.Basic;
 const Logger = core.utils.Logger;
+const { MongoClient } = require('mongodb');
 
 const env = require('../data/env');
 

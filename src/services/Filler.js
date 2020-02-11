@@ -84,7 +84,7 @@ class Filler extends BasicService {
             await this._updateData({ lastPostTime: lastTime });
 
             Logger.info(
-                `Added ${upsertedCount} and modified ${modifiedCount} posts in sitemap "${sitemap.part}"`
+                `Added ${upsertedCount} and modified ${modifiedCount} posts in sitemap "${sitemap.part}", last time: ${lastTime}`
             );
 
             await wait(POSTS_REQUEST_INTERVAL);
