@@ -1,5 +1,6 @@
 const core = require('cyberway-core-service');
 const BasicService = core.services.Basic;
+const Logger = core.utils.Logger;
 const { last } = require('ramda');
 
 const env = require('../data/env');
@@ -11,7 +12,7 @@ const PostModel = require('../models/Post');
 const SitemapModel = require('../models/Sitemap');
 
 const POSTS_COUNT = 1000;
-const POSTS_REQUEST_INTERVAL = 30000;
+const POSTS_REQUEST_INTERVAL = 10000;
 
 class Filler extends BasicService {
     constructor() {
@@ -80,6 +81,10 @@ class Filler extends BasicService {
             }
 
             await this._updateData({ lastPostTime: lastTime });
+
+            Logger.info(
+                `Added ${upsertedCount} and modified ${modifiedCount} posts in sitemap "${sitemap.part}"`
+            );
 
             await wait(POSTS_REQUEST_INTERVAL);
         }
