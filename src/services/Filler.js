@@ -94,11 +94,11 @@ class Filler extends BasicService {
     }
 
     async _getData() {
-        return await DataModel.findOne({}, {}, { lean: true });
+        return DataModel.findOne({}, {}, { lean: true });
     }
 
     async _updateData(updates) {
-        return await DataModel.updateOne(
+        return DataModel.updateOne(
             {},
             {
                 $set: updates,
@@ -120,7 +120,7 @@ class Filler extends BasicService {
 
         const date = new Date();
 
-        return await SitemapModel.create({
+        return SitemapModel.create({
             part: lastPart + 1,
             count: 0,
             creationTime: date,
@@ -146,7 +146,7 @@ class Filler extends BasicService {
             });
         }
 
-        return await PostModel.bulkWrite(ops);
+        return PostModel.bulkWrite(ops);
     }
 }
 
