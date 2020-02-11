@@ -37,8 +37,10 @@ class PrismMongo extends BasicController {
         const query = {};
 
         if (date) {
-            query['meta.creationTime'] = { $gt: date };
-            query['meta.updateTime'] = { $gt: date };
+            query.$or = [
+                { 'meta.creationTime': { $gt: date } },
+                { 'meta.updateTime': { $gt: date } },
+            ];
         }
 
         const aggregation = [
