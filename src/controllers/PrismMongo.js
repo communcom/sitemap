@@ -47,8 +47,8 @@ class PrismMongo extends BasicController {
             { $match: query },
             {
                 $sort: {
-                    'meta.creationTime': 1,
                     'meta.updateTime': 1,
+                    'meta.creationTime': 1,
                 },
             },
             {
