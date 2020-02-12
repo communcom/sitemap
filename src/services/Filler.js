@@ -53,7 +53,7 @@ class Filler extends BasicService {
             });
 
             if (!posts.length) {
-                Logger.info(`Wait for next tick because of end of posts"`);
+                Logger.info(`Wait for next tick because of end of posts`);
                 break;
             }
 
