@@ -1,0 +1,30 @@
+[
+  {
+    "url": "/feed/trending/new",
+    "changeFreq": "always"
+  },
+  {
+    "url": "/feed/trending/hot",
+    "changeFreq": "daily"
+  },
+  {
+    "url": "/feed/trending/topLikes/day",
+    "changeFreq": "daily"
+  },
+  {
+    "url": "/feed/trending/topLikes/week",
+    "changeFreq": "weekly"
+  },
+  {
+    "url": "/feed/trending/topLikes/month",
+    "changeFreq": "monthly"
+  },
+  {
+    "url": "/feed/trending/topLikes/all",
+    "changeFreq": "weekly"
+  },
+  {
+    "url": "/communities",
+    "changeFreq": "daily"
+  }
+]

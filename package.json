@@ -1,0 +1,31 @@
+{
+  "name": "sitemap",
+  "version": "0.1.0",
+  "description": "Comnun Sitemap Generator",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "lint": "eslint src/**/*.js"
+  },
+  "keywords": [
+    "commun.com",
+    "sitemap"
+  ],
+  "author": "commun.com",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "cyberway-core-service": "^3.56.0",
+    "dotenv": "^8.2.0",
+    "fs-extra": "^8.1.0",
+    "moment": "^2.24.0",
+    "ramda": "^0.27.0",
+    "then-sleep": "^1.0.1",
+    "xmlbuilder": "^13.0.2"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.10.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "prettier": "^1.19.1"
+  }
+}
