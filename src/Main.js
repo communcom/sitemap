@@ -20,10 +20,8 @@ class Main extends BasicMain {
 
         this.addNested(this._filler, this._generator);
 
-        if (!env.GLS_PAUSE) {
-            await this._filler.start();
-            await this._generator.start();
-        }
+        await this._filler.start();
+        await this._generator.start();
     }
 }
 
