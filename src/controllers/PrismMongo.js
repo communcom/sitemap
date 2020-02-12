@@ -81,24 +81,10 @@ class PrismMongo extends BasicController {
                     _id: false,
                     contentId: true,
                     author: {
-                        $let: {
-                            vars: {
-                                profile: { $arrayElemAt: ['$profile', 0] },
-                            },
-                            in: {
-                                username: '$$profile.username',
-                            },
-                        },
+                        username: { $arrayElemAt: ['$profile.username', 0] },
                     },
                     community: {
-                        $let: {
-                            vars: {
-                                community: { $arrayElemAt: ['$community', 0] },
-                            },
-                            in: {
-                                alias: '$$community.alias',
-                            },
-                        },
+                        alias: { $arrayElemAt: ['$community.alias', 0] },
                     },
                     creationTime: true,
                     updateTime: true,
