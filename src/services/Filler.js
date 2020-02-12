@@ -21,8 +21,8 @@ class Filler extends BasicService {
         this._prismMongo = new PrismMongo({ mongoDb });
     }
 
-    async start() {
-        await this._proccess();
+    start() {
+        this._proccess();
     }
 
     async _proccess() {
