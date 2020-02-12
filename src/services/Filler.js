@@ -52,8 +52,6 @@ class Filler extends BasicService {
                 limit: POSTS_COUNT,
             });
 
-            Logger.log(111, posts);
-
             if (!posts.length) {
                 Logger.info(`Wait for next tick because of end of posts"`);
                 break;
