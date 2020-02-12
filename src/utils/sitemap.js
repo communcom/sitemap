@@ -91,12 +91,11 @@ async function createSitemap(list, part) {
 }
 
 function postToSitemapXml({ contentId, author, community, creationTime, updateTime }) {
-    const username = author.username ? author.username : contentId.userId;
     const date = updateTime || creationTime; // "or" for support old posts
 
     return {
         loc: {
-            '#text': `${env.GLS_HOSTNAME}/${community.alias}/@${username}/${contentId.permlink}`,
+            '#text': `${env.GLS_HOSTNAME}/${community.alias}/@${author.username}/${contentId.permlink}`,
         },
         lastmod: {
             '#text': formatDate(date),
