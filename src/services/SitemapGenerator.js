@@ -1,6 +1,7 @@
 const core = require('cyberway-core-service');
 const BasicService = core.services.Basic;
 const { Logger } = core.utils;
+const wait = require('then-sleep');
 
 const env = require('../data/env');
 const {
@@ -9,7 +10,6 @@ const {
     createSitemap,
     postToSitemapXml,
 } = require('../utils/sitemap');
-const { wait } = require('../utils/common');
 const commonList = require('../data/commonList');
 
 const PostModel = require('../models/Post');

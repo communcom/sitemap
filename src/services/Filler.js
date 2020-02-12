@@ -2,9 +2,9 @@ const core = require('cyberway-core-service');
 const BasicService = core.services.Basic;
 const Logger = core.utils.Logger;
 const { last } = require('ramda');
+const wait = require('then-sleep');
 
 const env = require('../data/env');
-const { wait } = require('../utils/common');
 
 const PrismMongo = require('../controllers/PrismMongo');
 const DataModel = require('../models/Data');
@@ -15,16 +15,14 @@ const POSTS_COUNT = 1000;
 const POSTS_REQUEST_INTERVAL = 10000;
 
 class Filler extends BasicService {
-    constructor() {
-        super();
+    constructor({ mongoDb, ...options }) {
+        super(options);
 
-        this._prismMongo = new PrismMongo({ connector: this });
+        this._prismMongo = new PrismMongo({ mongoDb });
     }
 
     async start() {
-        await this._prismMongo.boot();
-
-        this._proccess();
+        await this._proccess();
     }
 
     async _proccess() {
@@ -53,6 +51,8 @@ class Filler extends BasicService {
                 date: lastTime,
                 limit: POSTS_COUNT,
             });
+
+            Logger.log(111, posts);
 
             if (!posts.length) {
                 Logger.info(`Wait for next tick because of end of posts"`);

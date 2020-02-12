@@ -1,35 +1,15 @@
 const core = require('cyberway-core-service');
 const BasicController = core.controllers.Basic;
-const Logger = core.utils.Logger;
-const { MongoClient } = require('mongodb');
-
-const env = require('../data/env');
 
 class PrismMongo extends BasicController {
-    async boot() {
-        this._client = await this._initializeClient();
-    }
+    constructor({ mongoDb, ...options } = {}) {
+        super(options);
 
-    async _initializeClient() {
-        return new Promise((resolve, reject) => {
-            const client = new MongoClient(env.GLS_PRISM_MONGO_CONNECT);
-
-            client.connect((err, client) => {
-                if (err) {
-                    Logger.error('Error while connectiong to prism MongoDB: ', err);
-                    reject(err);
-                    return;
-                }
-
-                Logger.info('Successfully connected to prisma MongoDB');
-
-                resolve(client);
-            });
-        });
+        this._mongoDb = mongoDb;
     }
 
     _collection({ name }) {
-        const db = this._client.db();
+        const db = this._mongoDb.getClient().db();
         return db.collection(name);
     }
 

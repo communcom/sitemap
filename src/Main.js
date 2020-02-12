@@ -2,6 +2,7 @@ const core = require('cyberway-core-service');
 const BasicMain = core.services.BasicMain;
 
 const env = require('./data/env');
+const MongoConnect = require('./services/MongoConnect');
 const Filler = require('./services/Filler');
 const SitemapGenerator = require('./services/SitemapGenerator');
 
@@ -11,17 +12,11 @@ class Main extends BasicMain {
 
         this.startMongoBeforeBoot();
 
-        this._filler = new Filler();
-        this._generator = new SitemapGenerator();
-    }
+        this._mongoConnect = new MongoConnect();
+        this._filler = new Filler({ mongoDb: this._mongoConnect });
+        this._sitemapGenerator = new SitemapGenerator();
 
-    async start() {
-        await super.start();
-
-        this.addNested(this._filler, this._generator);
-
-        await this._filler.start();
-        await this._generator.start();
+        this.addNested(this._mongoConnect, this._filler, this._sitemapGenerator);
     }
 }
 
