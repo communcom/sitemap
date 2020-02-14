@@ -100,6 +100,11 @@ class SitemapGenerator extends BasicService {
                 $match: { sitemap: part },
             },
             {
+                $sort: {
+                    updateTime: -1,
+                },
+            },
+            {
                 $project: {
                     sitemap: true,
                     contentId: true,
