@@ -103,8 +103,8 @@ class SitemapGenerator extends BasicService {
                 $project: {
                     sitemap: true,
                     contentId: true,
-                    author: true,
-                    community: true,
+                    authorUsername: true,
+                    communityAlias: true,
                     creationTime: true,
                     updateTime: true,
                 },

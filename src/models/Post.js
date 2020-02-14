@@ -22,17 +22,13 @@ module.exports = MongoDB.makeModel(
                 required: true,
             },
         },
-        author: {
-            username: {
-                type: String,
-                required: true,
-            },
+        authorUsername: {
+            type: String,
+            required: true,
         },
-        community: {
-            alias: {
-                type: String,
-                required: true,
-            },
+        communityAlias: {
+            type: String,
+            required: true,
         },
         creationTime: {
             type: Date,

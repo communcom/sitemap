@@ -92,12 +92,12 @@ async function createSitemap(list, part) {
     await _writeXml(`sitemap_${part}.xml`, doc);
 }
 
-function postToSitemapXml({ contentId, author, community, creationTime, updateTime }) {
+function postToSitemapXml({ contentId, authorUsername, communityAlias, creationTime, updateTime }) {
     const date = updateTime || creationTime; // "or" for support old posts
 
     return {
         loc: {
-            '#text': `${env.GLS_HOSTNAME}/${community.alias}/@${author.username}/${contentId.permlink}`,
+            '#text': `${env.GLS_HOSTNAME}/${communityAlias}/@${authorUsername}/${contentId.permlink}`,
         },
         lastmod: {
             '#text': formatDate(date),
