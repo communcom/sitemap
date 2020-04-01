@@ -1,26 +1,26 @@
 [
   {
-    "url": "/feed/trending/new",
+    "url": "/trending/new",
     "changeFreq": "always"
   },
   {
-    "url": "/feed/trending/hot",
+    "url": "/trending/hot",
     "changeFreq": "daily"
   },
   {
-    "url": "/feed/trending/topLikes/day",
+    "url": "/trending/topLikes/day",
     "changeFreq": "daily"
   },
   {
-    "url": "/feed/trending/topLikes/week",
+    "url": "/trending/topLikes/week",
     "changeFreq": "weekly"
   },
   {
-    "url": "/feed/trending/topLikes/month",
+    "url": "/trending/topLikes/month",
     "changeFreq": "monthly"
   },
   {
-    "url": "/feed/trending/topLikes/all",
+    "url": "/trending/topLikes/all",
     "changeFreq": "weekly"
   },
   {
