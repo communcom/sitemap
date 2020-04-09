@@ -95,15 +95,6 @@ class Filler extends BasicService {
         return DataModel.findOne({}, {}, { lean: true });
     }
 
-    async _updateData(updates) {
-        return DataModel.updateOne(
-            {},
-            {
-                $set: updates,
-            }
-        );
-    }
-
     async _getOrCreateLastSitemap() {
         let sitemap = await SitemapModel.findOne({ count: { $lt: env.GLS_SITEMAP_SIZE } }).sort({
             part: -1,
@@ -145,6 +136,15 @@ class Filler extends BasicService {
         }
 
         return PostModel.bulkWrite(ops);
+    }
+
+    async _updateData(updates) {
+        return DataModel.updateOne(
+            {},
+            {
+                $set: updates,
+            }
+        );
     }
 }
 

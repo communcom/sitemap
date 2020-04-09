@@ -78,7 +78,7 @@ async function createCommonSitemap(list) {
     await _writeXml('sitemap_common.xml', doc);
 }
 
-async function createSitemap(list, part) {
+async function createSitemap(list, name) {
     const doc = xmlbuilder.create(
         {
             urlset: {
@@ -89,7 +89,7 @@ async function createSitemap(list, part) {
         { encoding: 'utf-8' }
     );
 
-    await _writeXml(`sitemap_${part}.xml`, doc);
+    await _writeXml(`sitemap_${name}.xml`, doc);
 }
 
 function postToSitemapXml({ contentId, authorUsername, communityAlias, creationTime, updateTime }) {
