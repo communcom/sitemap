@@ -11,9 +11,6 @@ const DataModel = require('../models/Data');
 const PostModel = require('../models/Post');
 const SitemapModel = require('../models/Sitemap');
 
-const POSTS_COUNT = 1000;
-const POSTS_REQUEST_INTERVAL = 10000;
-
 class Filler extends BasicService {
     constructor({ mongoDb, ...options }) {
         super(options);
@@ -83,7 +80,7 @@ class Filler extends BasicService {
         while (true) {
             const posts = await this._prismMongo.getPosts({
                 date: lastTime,
-                limit: POSTS_COUNT,
+                limit: env.GLS_POSTS_REQUEST_LIMIT,
             });
 
             if (!posts.length) {
@@ -98,7 +95,7 @@ class Filler extends BasicService {
 
             await this._updateData({ lastPostTime: lastTime });
 
-            await wait(POSTS_REQUEST_INTERVAL);
+            await wait(env.GLS_POSTS_REQUEST_INTERVAL);
         }
     }
 
@@ -108,7 +105,7 @@ class Filler extends BasicService {
 
     async _getOrCreateLastSitemap() {
         let sitemap = await SitemapModel.findOne({
-            count: { $lt: env.GLS_SITEMAP_SIZE },
+            count: { $lt: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
             late: false,
         }).sort({
             part: -1,
