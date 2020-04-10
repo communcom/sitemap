@@ -37,23 +37,31 @@ module.exports = MongoDB.makeModel(
         index: [
             {
                 fields: {
-                    lastPostTime: 1,
+                    late: 1,
                 },
             },
             {
                 fields: {
                     count: 1,
+                },
+            },
+            {
+                fields: {
+                    count: 1,
+                    late: 1,
                     part: -1,
                 },
             },
             {
                 fields: {
+                    late: 1,
                     part: -1,
                 },
             },
             {
                 fields: {
                     needRegenerate: 1,
+                    late: 1,
                     count: 1,
                     part: -1,
                 },
@@ -68,6 +76,7 @@ module.exports = MongoDB.makeModel(
                 fields: {
                     part: 1,
                     needRegenerateAt: 1,
+                    late: 1,
                 },
             },
         ],

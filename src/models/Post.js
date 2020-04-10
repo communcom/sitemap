@@ -59,11 +59,7 @@ module.exports = MongoDB.makeModel(
             {
                 fields: {
                     sitemap: 1,
-                },
-            },
-            {
-                fields: {
-                    sitemap: 1,
+                    late: 1,
                 },
             },
         ],
