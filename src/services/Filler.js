@@ -105,7 +105,7 @@ class Filler extends BasicService {
 
     async _getOrCreateLastSitemap() {
         let sitemap = await SitemapModel.findOne({
-            count: { $lt: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
+            count: { $lte: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
             late: false,
         }).sort({
             part: -1,
@@ -133,7 +133,7 @@ class Filler extends BasicService {
 
     async _getOrCreateLateSitemap() {
         let sitemap = await SitemapModel.findOne({
-            count: { $lt: env.GLS_SITEMAP_SIZE },
+            count: { $lte: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
             late: true,
         }).sort({
             part: -1,
