@@ -4,6 +4,10 @@ const MongoDB = core.services.MongoDB;
 module.exports = MongoDB.makeModel(
     'Sitemap',
     {
+        late: {
+            type: Boolean,
+            default: false,
+        },
         part: {
             type: Number,
             required: true,

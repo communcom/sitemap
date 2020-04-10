@@ -28,6 +28,7 @@ class Filler extends BasicService {
     async _proccess() {
         while (true) {
             try {
+                await this._actualizeLate();
                 await this._generate();
             } catch (err) {
                 Logger.error('Filler tick failed:', err);
@@ -35,6 +36,39 @@ class Filler extends BasicService {
 
             await wait(env.GLS_FILL_EVERY);
         }
+    }
+
+    async _actualizeLate() {
+        const sitemapsObjects = await SitemapModel.find(
+            { late: true },
+            { _id: false, part: true, late: true },
+            { lean: true, sort: { updateTime: -1 } }
+        );
+
+        for (const { part, late } of sitemapsObjects) {
+            const count = await PostModel.countDocuments({ sitemap: part, late });
+
+            if (count === 0) {
+                await PostModel.findOneAndDelete({ sitemap: part, late });
+
+                Logger.info(`Sitemap "${part}${late ? '_late' : ''}" deleted due 0 count of posts`);
+            } else {
+                SitemapModel.update(
+                    { part, late },
+                    {
+                        $set: {
+                            count,
+                        },
+                    }
+                );
+
+                Logger.info(
+                    `Sitemap "${part}${late ? '_late' : ''}" updated count of posts: ${count}`
+                );
+            }
+        }
+
+        Logger.info(`Actualizing done`);
     }
 
     async _generate() {
@@ -60,32 +94,9 @@ class Filler extends BasicService {
             const lastPost = last(posts);
             lastTime = new Date(lastPost.updateTime || lastPost.creationTime);
 
-            const sitemap = await this._getOrCreateLastSitemap();
-
-            const { upsertedCount, modifiedCount } = await this._createPosts(sitemap.part, posts);
-
-            const needRegenerate = upsertedCount > 0 || modifiedCount > 0;
-
-            if (needRegenerate) {
-                const update = {
-                    $inc: { count: upsertedCount },
-                    $set: {
-                        updateTime: lastTime,
-                        needRegenerate,
-                        needRegenerateAt: new Date(),
-                    },
-                };
-
-                await sitemap.updateOne(update);
-            }
+            await this._processPosts(posts, lastTime);
 
             await this._updateData({ lastPostTime: lastTime });
-
-            Logger.info(
-                `Added ${upsertedCount} and modified ${modifiedCount} posts in sitemap "${
-                    sitemap.part
-                }", last time: ${lastTime.toISOString()}`
-            );
 
             await wait(POSTS_REQUEST_INTERVAL);
         }
@@ -96,7 +107,10 @@ class Filler extends BasicService {
     }
 
     async _getOrCreateLastSitemap() {
-        let sitemap = await SitemapModel.findOne({ count: { $lt: env.GLS_SITEMAP_SIZE } }).sort({
+        let sitemap = await SitemapModel.findOne({
+            count: { $lt: env.GLS_SITEMAP_SIZE },
+            late: false,
+        }).sort({
             part: -1,
         });
 
@@ -104,12 +118,15 @@ class Filler extends BasicService {
             return sitemap;
         }
 
-        const lastSitemap = await SitemapModel.findOne({}, { part: true }).sort({ part: -1 });
+        const lastSitemap = await SitemapModel.findOne({ late: false }, { part: true }).sort({
+            part: -1,
+        });
         const lastPart = (lastSitemap && lastSitemap.part) || 0;
 
         const date = new Date();
 
         return SitemapModel.create({
+            late: false,
             part: lastPart + 1,
             count: 0,
             creationTime: date,
@@ -117,17 +134,81 @@ class Filler extends BasicService {
         });
     }
 
-    async _createPosts(part, items) {
+    async _getOrCreateLateSitemap() {
+        let sitemap = await SitemapModel.findOne({
+            count: { $lt: env.GLS_SITEMAP_SIZE },
+            late: true,
+        }).sort({
+            part: -1,
+        });
+
+        if (sitemap) {
+            return sitemap;
+        }
+
+        const lastSitemap = await SitemapModel.findOne({ late: true }, { part: true }).sort({
+            part: -1,
+        });
+        const lastPart = (lastSitemap && lastSitemap.part) || 0;
+
+        const date = new Date();
+
+        return SitemapModel.create({
+            late: true,
+            part: lastPart + 1,
+            count: 0,
+            creationTime: date,
+            updateTime: date,
+        });
+    }
+
+    async _processPosts(items, lastTime) {
+        const lateDate = new Date();
+        lateDate.setDate(lateDate.getDate() - 7);
+
+        const sitemap = await this._getOrCreateLastSitemap();
+        const lateSitemap = await this._getOrCreateLateSitemap();
+
+        let late = false;
         const ops = [];
+        const lateOps = [];
+
         for (const { updateTime, ...item } of items) {
+            if (!late) {
+                late = lateDate < updateTime || lateDate < item.creationTime;
+            }
+
+            if (late) {
+                lateOps.push({
+                    updateOne: {
+                        filter: { contentId: item.contentId },
+                        update: {
+                            $set: {
+                                updateTime: updateTime || item.creationTime,
+                                late,
+                            }, // "or" for support old posts
+                            $setOnInsert: {
+                                ...item,
+                                sitemap: lateSitemap.part,
+                            },
+                        },
+                        upsert: true,
+                    },
+                });
+
+                continue;
+            }
+
             ops.push({
                 updateOne: {
                     filter: { contentId: item.contentId },
                     update: {
-                        $set: { updateTime: updateTime || item.creationTime }, // "or" for support old posts
+                        $set: {
+                            updateTime: updateTime || item.creationTime,
+                        }, // "or" for support old posts
                         $setOnInsert: {
                             ...item,
-                            sitemap: part,
+                            sitemap: sitemap.part,
                         },
                     },
                     upsert: true,
@@ -135,7 +216,38 @@ class Filler extends BasicService {
             });
         }
 
-        return PostModel.bulkWrite(ops);
+        if (ops.length) {
+            await this._generatePosts(ops, sitemap, lastTime);
+        }
+
+        if (lateOps.length) {
+            await this._generatePosts(lateOps, lateSitemap, lastTime);
+        }
+    }
+
+    async _generatePosts(ops, sitemap, lastTime) {
+        const { upsertedCount, modifiedCount } = await PostModel.bulkWrite(ops);
+
+        // need or not to regenerate last sitemap
+        const needRegenerate = upsertedCount > 0 || modifiedCount > 0;
+        if (needRegenerate) {
+            const update = {
+                $inc: { count: upsertedCount },
+                $set: {
+                    updateTime: lastTime,
+                    needRegenerate,
+                    needRegenerateAt: new Date(),
+                },
+            };
+
+            await sitemap.updateOne(update);
+        }
+
+        Logger.info(
+            `Added ${upsertedCount} and modified ${modifiedCount} posts in sitemap "${
+                sitemap.part
+            }${sitemap.late ? '_late' : ''}", last time: ${lastTime.toISOString()}`
+        );
     }
 
     async _updateData(updates) {
