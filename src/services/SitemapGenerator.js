@@ -62,7 +62,7 @@ class SitemapGenerator extends BasicService {
         await this._writeIndexSitemap();
     }
 
-    async _generateParts(late) {
+    async _generateParts(late = false) {
         const generateStartTime = new Date();
 
         const sitemapsObjects = await SitemapModel.find(

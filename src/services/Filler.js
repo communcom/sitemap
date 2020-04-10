@@ -208,6 +208,7 @@ class Filler extends BasicService {
                         }, // "or" for support old posts
                         $setOnInsert: {
                             ...item,
+                            late: false,
                             sitemap: sitemap.part,
                         },
                     },

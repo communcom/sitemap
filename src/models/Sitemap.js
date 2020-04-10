@@ -7,6 +7,7 @@ module.exports = MongoDB.makeModel(
         late: {
             type: Boolean,
             default: false,
+            required: true,
         },
         part: {
             type: Number,
