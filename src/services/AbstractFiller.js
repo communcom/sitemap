@@ -26,10 +26,10 @@ class AbstractFiller extends BasicService {
         );
     }
 
-    async _getOrCreateLastSitemap(late = false) {
+    async _getOrCreateLastSitemap() {
+        console.log(env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT);
         let sitemap = await SitemapModel.findOne({
             count: { $lte: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
-            late,
         }).sort({
             part: -1,
         });
@@ -38,7 +38,7 @@ class AbstractFiller extends BasicService {
             return sitemap;
         }
 
-        const lastSitemap = await SitemapModel.findOne({ late }, { part: true }).sort({
+        const lastSitemap = await SitemapModel.findOne({}, { part: true }).sort({
             part: -1,
         });
         const lastPart = (lastSitemap && lastSitemap.part) || 0;
@@ -46,7 +46,6 @@ class AbstractFiller extends BasicService {
         const date = new Date();
 
         return SitemapModel.create({
-            late,
             part: lastPart + 1,
             count: 0,
             creationTime: date,

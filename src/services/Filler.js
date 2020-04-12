@@ -10,7 +10,6 @@ const env = require('../data/env');
 const AbstractFiller = require('./AbstractFiller');
 const PrismMongo = require('../controllers/PrismMongo');
 const PostModel = require('../models/Post');
-const SitemapModel = require('../models/Sitemap');
 
 class Filler extends AbstractFiller {
     constructor({ mongoDb, ...options }) {
@@ -39,52 +38,39 @@ class Filler extends AbstractFiller {
     async _actualizeLate() {
         const lateDate = getLateDate();
 
-        const sitemapsObjects = await SitemapModel.find(
-            { late: true },
-            { _id: false, part: true, late: true },
-            { lean: true, sort: { updateTime: -1 } }
+        // set late false for posts what older than lateDate
+        await PostModel.updateMany(
+            {
+                $or: [{ creationTime: { $lte: lateDate } }, { updateTime: { $lte: lateDate } }],
+                late: true,
+            },
+            {
+                $set: {
+                    late: false,
+                },
+            }
         );
 
-        for (const { part, late } of sitemapsObjects) {
-            const posts = await PostModel.find(
+        // set late false for posts which does not fit in sitemap size
+        const latePost = await PostModel.findOne({
+            late: true,
+        }).skip(500);
+
+        if (latePost) {
+            await PostModel.updateMany(
                 {
-                    $or: [{ creationTime: { $lte: lateDate } }, { updateTime: { $lte: lateDate } }],
-                    sitemap: part,
-                    late,
+                    $or: [
+                        { creationTime: { $lte: latePost.creationTime } },
+                        { updateTime: { $lte: latePost.updateTime } },
+                    ],
+                    late: true,
                 },
-                {},
-                { lean: true }
+                {
+                    $set: {
+                        late: false,
+                    },
+                }
             );
-
-            if (!posts.length) {
-                continue;
-            }
-
-            const lastPost = last(posts);
-            const lastTime = new Date(lastPost.updateTime || lastPost.creationTime);
-
-            await this._processPosts(posts, lastTime);
-
-            // const count = await PostModel.countDocuments({ sitemap: part, late });
-            //
-            // if (count === 0) {
-            //     await PostModel.findOneAndDelete({ sitemap: part, late });
-            //
-            //     Logger.info(`Sitemap "${part}${late ? '_late' : ''}" deleted due 0 count of posts`);
-            // } else {
-            //     SitemapModel.update(
-            //         { part, late },
-            //         {
-            //             $set: {
-            //                 count,
-            //             },
-            //         }
-            //     );
-            //
-            //     Logger.info(
-            //         `Sitemap "${part}${late ? '_late' : ''}" updated count of posts: ${count}`
-            //     );
-            // }
         }
 
         Logger.info(`Actualizing done`);
@@ -117,39 +103,17 @@ class Filler extends AbstractFiller {
         }
     }
 
-    async _processPosts(items, lastTime, late = false) {
+    async _processPosts(items, lastTime) {
         const lateDate = getLateDate();
 
         const sitemap = await this._getOrCreateLastSitemap();
-        const lateSitemap = await this._getOrCreateLastSitemap(true);
 
+        let late = false;
         const ops = [];
-        const lateOps = [];
 
         for (const { updateTime, ...item } of items) {
             if (!late) {
                 late = lateDate < updateTime || lateDate < item.creationTime;
-            }
-
-            if (late) {
-                lateOps.push({
-                    updateOne: {
-                        filter: { contentId: item.contentId },
-                        update: {
-                            $set: {
-                                updateTime: updateTime || item.creationTime,
-                                late,
-                            }, // "or" for support old posts
-                            $setOnInsert: {
-                                ...item,
-                                sitemap: lateSitemap.part,
-                            },
-                        },
-                        upsert: true,
-                    },
-                });
-
-                continue;
             }
 
             ops.push({
@@ -158,7 +122,7 @@ class Filler extends AbstractFiller {
                     update: {
                         $set: {
                             updateTime: updateTime || item.creationTime,
-                            late: false,
+                            late,
                         }, // "or" for support old posts
                         $setOnInsert: {
                             ...item,
@@ -172,10 +136,6 @@ class Filler extends AbstractFiller {
 
         if (ops.length) {
             await this._generatePosts(ops, sitemap, lastTime);
-        }
-
-        if (lateOps.length) {
-            await this._generatePosts(lateOps, lateSitemap, lastTime);
         }
     }
 
@@ -200,7 +160,7 @@ class Filler extends AbstractFiller {
         Logger.info(
             `Added ${upsertedCount} and modified ${modifiedCount} posts in sitemap "${
                 sitemap.part
-            }${sitemap.late ? '_late' : ''}", last time: ${lastTime.toISOString()}`
+            }", last time: ${lastTime.toISOString()}`
         );
     }
 }

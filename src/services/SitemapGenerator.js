@@ -49,24 +49,17 @@ class SitemapGenerator extends BasicService {
             }
         }
 
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-            const sitemapsUpdated = await this._generateParts(true);
-
-            if (sitemapsUpdated < CHUNK_SIZE) {
-                break;
-            }
-        }
+        await this._generateLate();
 
         await this._generateCommonSitemap();
         await this._writeIndexSitemap();
     }
 
-    async _generateParts(late = false) {
+    async _generateParts() {
         const generateStartTime = new Date();
 
         const sitemapsObjects = await SitemapModel.find(
-            { needRegenerate: true, late },
+            { needRegenerate: true },
             { _id: false, part: true },
             { lean: true, limit: CHUNK_SIZE, sort: { part: -1 } }
         );
@@ -75,12 +68,9 @@ class SitemapGenerator extends BasicService {
 
         for (const part of parts) {
             try {
-                await this._generatePart(part, late);
+                await this._generatePart(part);
             } catch (err) {
-                Logger.error(
-                    `Can't create sitemap for part: (${part}${late ? '_late' : ''}):`,
-                    err
-                );
+                Logger.error(`Can't create sitemap for part: (${part}):`, err);
             }
         }
 
@@ -97,9 +87,6 @@ class SitemapGenerator extends BasicService {
                             $lte: generateStartTime,
                         },
                     },
-                    {
-                        late,
-                    },
                 ],
             },
             {
@@ -113,12 +100,12 @@ class SitemapGenerator extends BasicService {
         return sitemapsObjects.length;
     }
 
-    async _generatePart(part, late) {
+    async _generatePart(part) {
         const posts = await PostModel.aggregate([
             {
                 $match: {
                     sitemap: part,
-                    late,
+                    late: false,
                 },
             },
             {
@@ -128,7 +115,6 @@ class SitemapGenerator extends BasicService {
             },
             {
                 $project: {
-                    late: true,
                     sitemap: true,
                     contentId: true,
                     authorUsername: true,
@@ -141,9 +127,39 @@ class SitemapGenerator extends BasicService {
 
         const xmlLines = posts.map(postToSitemapXml);
 
-        await createSitemap(xmlLines, `${part}${late ? '_late' : ''}`);
+        await createSitemap(xmlLines, `${part}`);
 
-        Logger.info(`Created sitemap "${part}${late ? '_late' : ''}" with ${posts.length} posts`);
+        Logger.info(`Created sitemap "${part}" with ${posts.length} posts`);
+    }
+
+    async _generateLate() {
+        const posts = await PostModel.aggregate([
+            {
+                $match: {
+                    late: true,
+                },
+            },
+            {
+                $sort: {
+                    updateTime: -1,
+                },
+            },
+            {
+                $project: {
+                    contentId: true,
+                    authorUsername: true,
+                    communityAlias: true,
+                    creationTime: true,
+                    updateTime: true,
+                },
+            },
+        ]);
+
+        const xmlLines = posts.map(postToSitemapXml);
+
+        await createSitemap(xmlLines, 'late');
+
+        Logger.info(`Created sitemap "late" with ${posts.length} posts`);
     }
 
     async _generateCommonSitemap() {
@@ -153,7 +169,7 @@ class SitemapGenerator extends BasicService {
     }
 
     async _writeIndexSitemap() {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             const cursor = SitemapModel.find(
                 { count: { $ne: 0 } },
                 { _id: false, part: true, updateTime: true },
@@ -171,10 +187,23 @@ class SitemapGenerator extends BasicService {
                 },
             ];
 
-            cursor.on('data', ({ part, late, updateTime }) => {
+            const countLatePosts = await PostModel.countDocuments({ late: true });
+
+            if (countLatePosts) {
                 list.push({
                     loc: {
-                        '#text': `${env.GLS_HOSTNAME}/sitemap_${part}${late ? '_late' : ''}.xml`,
+                        '#text': `${env.GLS_HOSTNAME}/sitemap_late.xml`,
+                    },
+                    lastmod: {
+                        '#text': formatDate(new Date()),
+                    },
+                });
+            }
+
+            cursor.on('data', ({ part, updateTime }) => {
+                list.push({
+                    loc: {
+                        '#text': `${env.GLS_HOSTNAME}/sitemap_${part}.xml`,
                     },
                     lastmod: {
                         '#text': formatDate(updateTime),

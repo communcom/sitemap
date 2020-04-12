@@ -4,11 +4,6 @@ const MongoDB = core.services.MongoDB;
 module.exports = MongoDB.makeModel(
     'Sitemap',
     {
-        late: {
-            type: Boolean,
-            default: false,
-            required: true,
-        },
         part: {
             type: Number,
             required: true,
@@ -36,11 +31,7 @@ module.exports = MongoDB.makeModel(
     },
     {
         index: [
-            {
-                fields: {
-                    late: 1,
-                },
-            },
+            {},
             {
                 fields: {
                     count: 1,
@@ -49,20 +40,17 @@ module.exports = MongoDB.makeModel(
             {
                 fields: {
                     count: 1,
-                    late: 1,
                     part: -1,
                 },
             },
             {
                 fields: {
-                    late: 1,
                     part: -1,
                 },
             },
             {
                 fields: {
                     needRegenerate: 1,
-                    late: 1,
                     count: 1,
                     part: -1,
                 },
@@ -77,7 +65,6 @@ module.exports = MongoDB.makeModel(
                 fields: {
                     part: 1,
                     needRegenerateAt: 1,
-                    late: 1,
                 },
             },
         ],
