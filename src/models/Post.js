@@ -62,6 +62,14 @@ module.exports = MongoDB.makeModel(
                     late: 1,
                 },
             },
+            {
+                fields: {
+                    creationTime: 1,
+                    updateTime: 1,
+                    sitemap: 1,
+                    late: 1,
+                },
+            },
         ],
     }
 );

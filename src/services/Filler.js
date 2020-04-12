@@ -1,17 +1,18 @@
+const { getLateDate } = require('../utils/time');
+
 const core = require('cyberway-core-service');
-const BasicService = core.services.Basic;
 const Logger = core.utils.Logger;
 const { last } = require('ramda');
 const wait = require('then-sleep');
 
 const env = require('../data/env');
 
+const AbstractFiller = require('./AbstractFiller');
 const PrismMongo = require('../controllers/PrismMongo');
-const DataModel = require('../models/Data');
 const PostModel = require('../models/Post');
 const SitemapModel = require('../models/Sitemap');
 
-class Filler extends BasicService {
+class Filler extends AbstractFiller {
     constructor({ mongoDb, ...options }) {
         super(options);
 
@@ -36,6 +37,8 @@ class Filler extends BasicService {
     }
 
     async _actualizeLate() {
+        const lateDate = getLateDate();
+
         const sitemapsObjects = await SitemapModel.find(
             { late: true },
             { _id: false, part: true, late: true },
@@ -43,37 +46,52 @@ class Filler extends BasicService {
         );
 
         for (const { part, late } of sitemapsObjects) {
-            const count = await PostModel.countDocuments({ sitemap: part, late });
+            const posts = await PostModel.find(
+                {
+                    $or: [{ creationTime: { $lte: lateDate } }, { updateTime: { $lte: lateDate } }],
+                    sitemap: part,
+                    late,
+                },
+                {},
+                { lean: true }
+            );
 
-            if (count === 0) {
-                await PostModel.findOneAndDelete({ sitemap: part, late });
-
-                Logger.info(`Sitemap "${part}${late ? '_late' : ''}" deleted due 0 count of posts`);
-            } else {
-                SitemapModel.update(
-                    { part, late },
-                    {
-                        $set: {
-                            count,
-                        },
-                    }
-                );
-
-                Logger.info(
-                    `Sitemap "${part}${late ? '_late' : ''}" updated count of posts: ${count}`
-                );
+            if (!posts.length) {
+                continue;
             }
+
+            const lastPost = last(posts);
+            const lastTime = new Date(lastPost.updateTime || lastPost.creationTime);
+
+            await this._processPosts(posts, lastTime);
+
+            // const count = await PostModel.countDocuments({ sitemap: part, late });
+            //
+            // if (count === 0) {
+            //     await PostModel.findOneAndDelete({ sitemap: part, late });
+            //
+            //     Logger.info(`Sitemap "${part}${late ? '_late' : ''}" deleted due 0 count of posts`);
+            // } else {
+            //     SitemapModel.update(
+            //         { part, late },
+            //         {
+            //             $set: {
+            //                 count,
+            //             },
+            //         }
+            //     );
+            //
+            //     Logger.info(
+            //         `Sitemap "${part}${late ? '_late' : ''}" updated count of posts: ${count}`
+            //     );
+            // }
         }
 
         Logger.info(`Actualizing done`);
     }
 
     async _generate() {
-        let data = await this._getData();
-
-        if (!data) {
-            data = await DataModel.create({});
-        }
+        const data = await this._getData();
 
         let lastTime = data.lastPostTime;
 
@@ -99,74 +117,12 @@ class Filler extends BasicService {
         }
     }
 
-    async _getData() {
-        return DataModel.findOne({}, {}, { lean: true });
-    }
-
-    async _getOrCreateLastSitemap() {
-        let sitemap = await SitemapModel.findOne({
-            count: { $lte: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
-            late: false,
-        }).sort({
-            part: -1,
-        });
-
-        if (sitemap) {
-            return sitemap;
-        }
-
-        const lastSitemap = await SitemapModel.findOne({ late: false }, { part: true }).sort({
-            part: -1,
-        });
-        const lastPart = (lastSitemap && lastSitemap.part) || 0;
-
-        const date = new Date();
-
-        return SitemapModel.create({
-            late: false,
-            part: lastPart + 1,
-            count: 0,
-            creationTime: date,
-            updateTime: date,
-        });
-    }
-
-    async _getOrCreateLateSitemap() {
-        let sitemap = await SitemapModel.findOne({
-            count: { $lte: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
-            late: true,
-        }).sort({
-            part: -1,
-        });
-
-        if (sitemap) {
-            return sitemap;
-        }
-
-        const lastSitemap = await SitemapModel.findOne({ late: true }, { part: true }).sort({
-            part: -1,
-        });
-        const lastPart = (lastSitemap && lastSitemap.part) || 0;
-
-        const date = new Date();
-
-        return SitemapModel.create({
-            late: true,
-            part: lastPart + 1,
-            count: 0,
-            creationTime: date,
-            updateTime: date,
-        });
-    }
-
-    async _processPosts(items, lastTime) {
-        const lateDate = new Date();
-        lateDate.setDate(lateDate.getDate() - 7);
+    async _processPosts(items, lastTime, late = false) {
+        const lateDate = getLateDate();
 
         const sitemap = await this._getOrCreateLastSitemap();
-        const lateSitemap = await this._getOrCreateLateSitemap();
+        const lateSitemap = await this._getOrCreateLastSitemap(true);
 
-        let late = false;
         const ops = [];
         const lateOps = [];
 
@@ -202,10 +158,10 @@ class Filler extends BasicService {
                     update: {
                         $set: {
                             updateTime: updateTime || item.creationTime,
+                            late: false,
                         }, // "or" for support old posts
                         $setOnInsert: {
                             ...item,
-                            late: false,
                             sitemap: sitemap.part,
                         },
                     },
@@ -245,15 +201,6 @@ class Filler extends BasicService {
             `Added ${upsertedCount} and modified ${modifiedCount} posts in sitemap "${
                 sitemap.part
             }${sitemap.late ? '_late' : ''}", last time: ${lastTime.toISOString()}`
-        );
-    }
-
-    async _updateData(updates) {
-        return DataModel.updateOne(
-            {},
-            {
-                $set: updates,
-            }
         );
     }
 }
