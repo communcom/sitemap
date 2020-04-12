@@ -7,6 +7,11 @@ function getLateDate() {
     return lateDate;
 }
 
+function formatDate(date) {
+    return date.toJSON().substr(0, 19) + '+00:00';
+}
+
 module.exports = {
     getLateDate,
+    formatDate,
 };

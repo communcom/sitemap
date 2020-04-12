@@ -27,7 +27,6 @@ class AbstractFiller extends BasicService {
     }
 
     async _getOrCreateLastSitemap() {
-        console.log(env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT);
         let sitemap = await SitemapModel.findOne({
             count: { $lte: env.GLS_SITEMAP_SIZE - env.GLS_POSTS_REQUEST_LIMIT },
         }).sort({

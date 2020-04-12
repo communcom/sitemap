@@ -31,7 +31,6 @@ module.exports = MongoDB.makeModel(
     },
     {
         index: [
-            {},
             {
                 fields: {
                     count: 1,

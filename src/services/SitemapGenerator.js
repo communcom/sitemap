@@ -10,16 +10,13 @@ const {
     createSitemap,
     postToSitemapXml,
 } = require('../utils/sitemap');
+const { formatDate } = require('../utils/time');
 const commonList = require('../data/commonList');
 
 const PostModel = require('../models/Post');
 const SitemapModel = require('../models/Sitemap');
 
 const CHUNK_SIZE = 1000;
-
-function formatDate(date) {
-    return date.toJSON().substr(0, 19) + '+00:00';
-}
 
 class SitemapGenerator extends BasicService {
     start() {
