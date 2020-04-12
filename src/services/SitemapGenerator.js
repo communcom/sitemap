@@ -102,7 +102,7 @@ class SitemapGenerator extends BasicService {
             {
                 $match: {
                     sitemap: part,
-                    late: false,
+                    $or: [{ late: false }, { late: { $exists: false } }],
                 },
             },
             {
