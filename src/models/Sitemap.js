@@ -33,7 +33,7 @@ module.exports = MongoDB.makeModel(
         index: [
             {
                 fields: {
-                    lastPostTime: 1,
+                    count: 1,
                 },
             },
             {

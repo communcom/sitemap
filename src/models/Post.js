@@ -4,6 +4,11 @@ const MongoDB = core.services.MongoDB;
 module.exports = MongoDB.makeModel(
     'Post',
     {
+        late: {
+            type: Boolean,
+            default: false,
+            required: true,
+        },
         sitemap: {
             type: Number,
             required: true,
@@ -54,11 +59,15 @@ module.exports = MongoDB.makeModel(
             {
                 fields: {
                     sitemap: 1,
+                    late: 1,
                 },
             },
             {
                 fields: {
+                    creationTime: 1,
+                    updateTime: 1,
                     sitemap: 1,
+                    late: 1,
                 },
             },
         ],

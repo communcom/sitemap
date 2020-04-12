@@ -10,6 +10,7 @@ const {
     createSitemap,
     postToSitemapXml,
 } = require('../utils/sitemap');
+const { formatDate } = require('../utils/time');
 const commonList = require('../data/commonList');
 
 const PostModel = require('../models/Post');
@@ -38,18 +39,20 @@ class SitemapGenerator extends BasicService {
     async _generateBulk() {
         // eslint-disable-next-line no-constant-condition
         while (true) {
-            const sitemapsUpdated = await this._generate();
+            const sitemapsUpdated = await this._generateParts();
 
             if (sitemapsUpdated < CHUNK_SIZE) {
                 break;
             }
         }
 
+        await this._generateLate();
+
         await this._generateCommonSitemap();
         await this._writeIndexSitemap();
     }
 
-    async _generate() {
+    async _generateParts() {
         const generateStartTime = new Date();
 
         const sitemapsObjects = await SitemapModel.find(
@@ -62,7 +65,7 @@ class SitemapGenerator extends BasicService {
 
         for (const part of parts) {
             try {
-                await this._generateForPart(part);
+                await this._generatePart(part);
             } catch (err) {
                 Logger.error(`Can't create sitemap for part: (${part}):`, err);
             }
@@ -94,10 +97,13 @@ class SitemapGenerator extends BasicService {
         return sitemapsObjects.length;
     }
 
-    async _generateForPart(part) {
+    async _generatePart(part) {
         const posts = await PostModel.aggregate([
             {
-                $match: { sitemap: part },
+                $match: {
+                    sitemap: part,
+                    late: false,
+                },
             },
             {
                 $sort: {
@@ -118,11 +124,49 @@ class SitemapGenerator extends BasicService {
 
         const xmlLines = posts.map(postToSitemapXml);
 
-        await createSitemap(xmlLines, part);
+        await createSitemap(xmlLines, `${part}`);
+
+        Logger.info(`Created sitemap "${part}" with ${posts.length} posts`);
+    }
+
+    async _generateLate() {
+        const posts = await PostModel.aggregate([
+            {
+                $match: {
+                    late: true,
+                },
+            },
+            {
+                $sort: {
+                    updateTime: -1,
+                },
+            },
+            {
+                $project: {
+                    contentId: true,
+                    authorUsername: true,
+                    communityAlias: true,
+                    creationTime: true,
+                    updateTime: true,
+                },
+            },
+        ]);
+
+        const xmlLines = posts.map(postToSitemapXml);
+
+        await createSitemap(xmlLines, 'late');
+
+        Logger.info(`Created sitemap "late" with ${posts.length} posts`);
+    }
+
+    async _generateCommonSitemap() {
+        await createCommonSitemap(commonList);
+
+        Logger.info(`Created sitemap "common"`);
     }
 
     async _writeIndexSitemap() {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             const cursor = SitemapModel.find(
                 { count: { $ne: 0 } },
                 { _id: false, part: true, updateTime: true },
@@ -140,6 +184,19 @@ class SitemapGenerator extends BasicService {
                 },
             ];
 
+            const countLatePosts = await PostModel.countDocuments({ late: true });
+
+            if (countLatePosts) {
+                list.push({
+                    loc: {
+                        '#text': `${env.GLS_HOSTNAME}/sitemap_late.xml`,
+                    },
+                    lastmod: {
+                        '#text': formatDate(new Date()),
+                    },
+                });
+            }
+
             cursor.on('data', ({ part, updateTime }) => {
                 list.push({
                     loc: {
@@ -155,6 +212,8 @@ class SitemapGenerator extends BasicService {
                 try {
                     await createIndexSitemap(list);
 
+                    Logger.info(`Created index sitemap with ${list.length} entries`);
+
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -162,14 +221,6 @@ class SitemapGenerator extends BasicService {
             });
         });
     }
-
-    async _generateCommonSitemap() {
-        await createCommonSitemap(commonList);
-    }
-}
-
-function formatDate(date) {
-    return date.toJSON().substr(0, 19) + '+00:00';
 }
 
 module.exports = SitemapGenerator;
