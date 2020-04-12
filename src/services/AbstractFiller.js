@@ -8,7 +8,7 @@ const DataModel = require('../models/Data');
 
 class AbstractFiller extends BasicService {
     async _getData() {
-        let data = DataModel.findOne({}, {}, { lean: true });
+        let data = await DataModel.findOne({}, {}, { lean: true });
 
         if (!data) {
             data = await DataModel.create({});
