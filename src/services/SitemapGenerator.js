@@ -240,7 +240,7 @@ class SitemapGenerator extends BasicService {
             if (countLatePosts) {
                 list.push({
                     loc: {
-                        '#text': `${env.GLS_HOSTNAME}/sitemap_late.xml`,
+                        '#text': `${env.GLS_HOSTNAME}/sitemap_posts_late.xml`,
                     },
                     lastmod: {
                         '#text': formatDate(new Date()),
