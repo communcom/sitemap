@@ -2,13 +2,21 @@ const core = require('cyberway-core-service');
 const MongoDB = core.services.MongoDB;
 
 module.exports = MongoDB.makeModel(
-    'Data',
+    'Community',
     {
-        lastPostTime: {
+        sitemap: {
+            type: Number,
+            required: true,
+        },
+        communityAlias: {
+            type: String,
+            required: true,
+        },
+        creationTime: {
             type: Date,
             default: null,
         },
-        lastCommunityTime: {
+        updateTime: {
             type: Date,
             default: null,
         },
@@ -17,12 +25,15 @@ module.exports = MongoDB.makeModel(
         index: [
             {
                 fields: {
-                    lastPostTime: 1,
+                    communityAlias: 1,
+                },
+                options: {
+                    unique: true,
                 },
             },
             {
                 fields: {
-                    lastCommunityTime: 1,
+                    sitemap: 1,
                 },
             },
         ],

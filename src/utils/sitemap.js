@@ -108,9 +108,26 @@ function postToSitemapXml({ contentId, authorUsername, communityAlias, creationT
     };
 }
 
+function communityToSitemapXml({ communityAlias, creationTime, updateTime }) {
+    const date = updateTime || creationTime; // "or" for support old posts
+
+    return {
+        loc: {
+            '#text': `${env.GLS_HOSTNAME}/${communityAlias}`,
+        },
+        lastmod: {
+            '#text': formatDate(date),
+        },
+        changefreq: {
+            '#text': getChangeFreq(date),
+        },
+    };
+}
+
 module.exports = {
     createIndexSitemap,
     createCommonSitemap,
     createSitemap,
     postToSitemapXml,
+    communityToSitemapXml,
 };

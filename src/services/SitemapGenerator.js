@@ -9,11 +9,13 @@ const {
     createIndexSitemap,
     createSitemap,
     postToSitemapXml,
+    communityToSitemapXml,
 } = require('../utils/sitemap');
 const { formatDate } = require('../utils/time');
 const commonList = require('../data/commonList');
 
 const PostModel = require('../models/Post');
+const CommunityModel = require('../models/Community');
 const SitemapModel = require('../models/Sitemap');
 
 const CHUNK_SIZE = 1000;
@@ -32,31 +34,39 @@ class SitemapGenerator extends BasicService {
                 Logger.error('SitemapGenerator tick failed:', err);
             }
 
-            await wait(env.GLS_GENERATE_EVERY);
+            await wait(env.GLS_SITEMAP_GENERATE_EVERY);
         }
     }
 
     async _generateBulk() {
         // eslint-disable-next-line no-constant-condition
         while (true) {
-            const sitemapsUpdated = await this._generateParts();
+            const sitemapsUpdated = await this._generateParts('posts');
 
             if (sitemapsUpdated < CHUNK_SIZE) {
                 break;
             }
         }
 
-        await this._generateLate();
+        await this._generatePostsLate();
+
+        while (true) {
+            const sitemapsUpdated = await this._generateParts('communities');
+
+            if (sitemapsUpdated < CHUNK_SIZE) {
+                break;
+            }
+        }
 
         await this._generateCommonSitemap();
         await this._writeIndexSitemap();
     }
 
-    async _generateParts() {
+    async _generateParts(type) {
         const generateStartTime = new Date();
 
         const sitemapsObjects = await SitemapModel.find(
-            { needRegenerate: true },
+            { type, needRegenerate: true },
             { _id: false, part: true },
             { lean: true, limit: CHUNK_SIZE, sort: { part: -1 } }
         );
@@ -65,15 +75,27 @@ class SitemapGenerator extends BasicService {
 
         for (const part of parts) {
             try {
-                await this._generatePart(part);
+                switch (type) {
+                    case 'posts':
+                        await this._generatePostsPart(part);
+                        break;
+                    case 'communities':
+                        await this._generateCommunitiesPart(part);
+                        break;
+                    default:
+                        throw Error('Wrong type for generateParts', type);
+                }
             } catch (err) {
-                Logger.error(`Can't create sitemap for part: (${part}):`, err);
+                Logger.error(`Can't create sitemap for part: (${part}) ${type}:`, err);
             }
         }
 
         await SitemapModel.updateMany(
             {
                 $and: [
+                    {
+                        type,
+                    },
                     {
                         part: {
                             $in: parts,
@@ -97,7 +119,7 @@ class SitemapGenerator extends BasicService {
         return sitemapsObjects.length;
     }
 
-    async _generatePart(part) {
+    async _generatePostsPart(part) {
         const posts = await PostModel.aggregate([
             {
                 $match: {
@@ -124,12 +146,41 @@ class SitemapGenerator extends BasicService {
 
         const xmlLines = posts.map(postToSitemapXml);
 
-        await createSitemap(xmlLines, `${part}`);
+        await createSitemap(xmlLines, `posts_${part}`);
 
         Logger.info(`Created sitemap "${part}" with ${posts.length} posts`);
     }
 
-    async _generateLate() {
+    async _generateCommunitiesPart(part) {
+        const posts = await CommunityModel.aggregate([
+            {
+                $match: {
+                    sitemap: part,
+                },
+            },
+            {
+                $sort: {
+                    updateTime: -1,
+                },
+            },
+            {
+                $project: {
+                    sitemap: true,
+                    communityAlias: true,
+                    creationTime: true,
+                    updateTime: true,
+                },
+            },
+        ]);
+
+        const xmlLines = posts.map(communityToSitemapXml);
+
+        await createSitemap(xmlLines, `communities_${part}`);
+
+        Logger.info(`Created sitemap "${part}" with ${posts.length} communities`);
+    }
+
+    async _generatePostsLate() {
         const posts = await PostModel.aggregate([
             {
                 $match: {
@@ -154,7 +205,7 @@ class SitemapGenerator extends BasicService {
 
         const xmlLines = posts.map(postToSitemapXml);
 
-        await createSitemap(xmlLines, 'late');
+        await createSitemap(xmlLines, 'posts_late');
 
         Logger.info(`Created sitemap "late" with ${posts.length} posts`);
     }
@@ -169,7 +220,7 @@ class SitemapGenerator extends BasicService {
         return new Promise(async (resolve, reject) => {
             const cursor = SitemapModel.find(
                 { count: { $ne: 0 } },
-                { _id: false, part: true, updateTime: true },
+                { _id: false, type: true, part: true, updateTime: true },
                 { lean: true, sort: { updateTime: -1 } }
             ).cursor();
 
@@ -197,10 +248,10 @@ class SitemapGenerator extends BasicService {
                 });
             }
 
-            cursor.on('data', ({ part, updateTime }) => {
+            cursor.on('data', ({ type, part, updateTime }) => {
                 list.push({
                     loc: {
-                        '#text': `${env.GLS_HOSTNAME}/sitemap_${part}.xml`,
+                        '#text': `${env.GLS_HOSTNAME}/sitemap_${type}_${part}.xml`,
                     },
                     lastmod: {
                         '#text': formatDate(updateTime),
