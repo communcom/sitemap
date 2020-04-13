@@ -72,6 +72,46 @@ class PrismMongo extends BasicController {
             .aggregate(aggregation)
             .toArray();
     }
+
+    async getCommunities({ date, limit = 1000 }) {
+        const query = {};
+
+        if (date) {
+            query.$or = [{ createdAt: { $gt: date } }, { updatedAt: { $gt: date } }];
+        }
+
+        const aggregation = [
+            { $match: query },
+            {
+                $sort: {
+                    createdAt: 1,
+                    updatedAt: 1,
+                },
+            },
+            {
+                $limit: limit,
+            },
+            {
+                $addFields: {
+                    communityAlias: '$alias',
+                    creationTime: '$createdAt',
+                    updateTime: '$updatedAt',
+                },
+            },
+            {
+                $project: {
+                    _id: false,
+                    communityAlias: true,
+                    creationTime: true,
+                    updateTime: true,
+                },
+            },
+        ];
+
+        return this._collection({ name: 'communities' })
+            .aggregate(aggregation)
+            .toArray();
+    }
 }
 
 module.exports = PrismMongo;

@@ -11,7 +11,7 @@ const AbstractFiller = require('./AbstractFiller');
 const PrismMongo = require('../controllers/PrismMongo');
 const PostModel = require('../models/Post');
 
-class Filler extends AbstractFiller {
+class FillerPosts extends AbstractFiller {
     constructor({ mongoDb, ...options }) {
         super(options);
 
@@ -31,7 +31,7 @@ class Filler extends AbstractFiller {
                 Logger.error('Filler tick failed:', err);
             }
 
-            await wait(env.GLS_FILL_EVERY);
+            await wait(env.GLS_POSTS_FILL_EVERY);
         }
     }
 
@@ -106,7 +106,7 @@ class Filler extends AbstractFiller {
     async _processPosts(items, lastTime) {
         const lateDate = getLateDate();
 
-        const sitemap = await this._getOrCreateLastSitemap();
+        const sitemap = await this._getOrCreateLastSitemap('posts');
 
         let late = false;
         const ops = [];
@@ -165,4 +165,4 @@ class Filler extends AbstractFiller {
     }
 }
 
-module.exports = Filler;
+module.exports = FillerPosts;

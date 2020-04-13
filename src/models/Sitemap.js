@@ -4,6 +4,10 @@ const MongoDB = core.services.MongoDB;
 module.exports = MongoDB.makeModel(
     'Sitemap',
     {
+        type: {
+            type: String,
+            required: true,
+        },
         part: {
             type: Number,
             required: true,
@@ -33,6 +37,12 @@ module.exports = MongoDB.makeModel(
         index: [
             {
                 fields: {
+                    type: 1,
+                }
+            },
+            {
+                fields: {
+                    type: 1,
                     count: 1,
                 },
             },
