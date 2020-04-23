@@ -36,7 +36,7 @@ class Post extends BasicController {
     }
 
     async _updateSitemap(post) {
-        if (post) {
+        if (!post) {
             return;
         }
 
