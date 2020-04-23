@@ -14,7 +14,9 @@ class PrismMongo extends BasicController {
     }
 
     async getPosts({ date, limit = 1000 }) {
-        const query = {};
+        const query = {
+            status: 'clean',
+        };
 
         if (date) {
             query.$or = [
