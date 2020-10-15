@@ -1,6 +1,6 @@
 # SITEMAP-SERVICE
 
-**SITEMAP-SERVICE** is a service that creates a sitemap of a site based on the disperse of CyberWay blockchain data of commun DAP, the result of which gets into the path [commun.com/sitemap.xml ](https://commun.com/sitemap.xml).
+**SITEMAP-SERVICE** is a service that creates the sitemap based on the disperse of CyberWay blockchain data of commun DAP, the result of which gets into the path [commun.com/sitemap.xml ](https://commun.com/sitemap.xml).
 
 Dependencies:
 
